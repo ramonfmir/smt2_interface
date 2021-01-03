@@ -24,7 +24,7 @@ def special_constant.to_string : special_constant → string
 | (special_constant.number i)   := to_string i
 | (special_constant.string str) := str
 | (special_constant.bitvec bitsz num) :=
-  let unum := if num < 0 then 2^bitsz - num.nat_abs + 1 else num.to_nat in
+  let unum := if num < 0 then (nat.shiftl 1 bitsz) - num.nat_abs + 1 else num.to_nat in
   if bitsz % 4 = 0 then -- use #xNNNN format
     let l := to_hex unum in
     "#x" ++ list.as_string (list.repeat '0' (bitsz / 4 - l.length)) ++ l

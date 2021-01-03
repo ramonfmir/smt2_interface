@@ -136,8 +136,6 @@ meta def reflect_application (fn : expr) (args : list expr) (callback : expr →
 meta def is_supported_numeric_ty (ty : expr) : bool :=
 (ty = `(int) ∨ ty = `(nat))
 
-#print expr
-
 -- /-- This function is the meat of the tactic, it takes a propositional formula in Lean, and transforms
 --    it into a corresponding term in SMT2. -/
 meta def reflect_arith_formula (reflect_base : expr → smt2_m lol.term) : expr → smt2_m lol.term
