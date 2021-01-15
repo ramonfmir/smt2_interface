@@ -3,8 +3,9 @@ namespace smt2
 @[reducible] def symbol : Type := string
 @[reducible] def identifier : Type := string
 
-inductive special_constant : Type
+meta inductive special_constant : Type
 | number : int → special_constant
+| fpnumber : native.float → special_constant
 | bitvec : nat → int → special_constant
 | string : string → special_constant
 | bool : bool → special_constant
@@ -20,8 +21,9 @@ def to_hex : nat → string
   have n' / 16 < n', begin apply nat.div_lt_self, apply nat.zero_lt_succ, comp_val end,
   to_hex (n' / 16) ++ to_string (hexdigit (n' % 16))
 
-def special_constant.to_string : special_constant → string
-| (special_constant.number i)   := to_string i
+meta def special_constant.to_string : special_constant → string
+| (special_constant.number i) := to_string i
+| (special_constant.fpnumber f) := to_string f
 | (special_constant.string str) := str
 | (special_constant.bitvec bitsz num) :=
   let unum := if num < 0 then (nat.shiftl 1 bitsz) - num.nat_abs + 1 else num.to_nat in
@@ -39,7 +41,7 @@ def special_constant.to_string : special_constant → string
 meta def special_constant.to_format : special_constant → format :=
 to_fmt ∘ special_constant.to_string
 
-instance int_to_special_constant : has_coe int special_constant :=
+meta instance int_to_special_constant : has_coe int special_constant :=
 ⟨ special_constant.number ⟩
 
 inductive sort : Type
@@ -72,7 +74,7 @@ meta def qualified_name.to_format : qualified_name → format
 instance string_to_qual_name : has_coe string qualified_name :=
     ⟨ fun str, qualified_name.id str ⟩
 
-inductive term : Type
+meta inductive term : Type
 | qual_id : qualified_name → term
 | const : special_constant → term
 | apply : qualified_name → list term → term
@@ -82,10 +84,10 @@ inductive term : Type
 | existsq : list (symbol × sort) → term → term
 | annotate : term → list attr → term
 
-instance qual_name_to_term : has_coe qualified_name term :=
+meta instance qual_name_to_term : has_coe qualified_name term :=
 ⟨ term.qual_id ⟩
 
-instance special_const_to_term : has_coe special_constant term :=
+meta instance special_const_to_term : has_coe special_constant term :=
 ⟨ term.const ⟩
 
 meta def term.to_format : term → format
@@ -112,7 +114,7 @@ inductive info_flag : Type
 inductive keyword : Type
 inductive option : Type
 
-inductive cmd : Type
+meta inductive cmd : Type
 | assert_cmd : term → cmd
 | check_sat : cmd
 | check_sat_assuming : term → cmd -- not complete
@@ -152,6 +154,7 @@ meta def cmd.to_format : cmd → format
 | (declare_const sym srt) := "(declare-const " ++ sym ++ " " ++ to_fmt srt ++ ")"
 | (assert_cmd t) := "(assert " ++ t.to_format ++ ")"
 | (check_sat) := "(check-sat)"
+| (get_proof) := "(get-proof)"
 | (declare_fun sym ps rs) := "(declare-fun " ++ sym ++
     format.bracket " (" ")" (format.join $ list.intersperse " " $ list.map to_fmt ps) ++ " " ++ to_fmt rs ++ ")"
 | (declare_sort sym arity) := "(declare-sort " ++ sym ++ " " ++ to_string arity ++ ")"

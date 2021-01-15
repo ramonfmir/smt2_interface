@@ -25,3 +25,9 @@ lemma lt_trans_by_z3 :
 begin
     intros, z3
 end
+
+lemma lt_float : ∀ (f1 f2 : native.float), 
+    f1 + (1 : native.float) < f2 + (1 : native.float) → f1 < f2 :=
+begin 
+    intros, z3 "evox.log",
+end

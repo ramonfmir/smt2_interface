@@ -65,6 +65,7 @@ do st ← get,
      | `(int) := pure $ lol.type.int
      | `(nat) := pure $ lol.type.refinement lol.type.int (fun x, lol.term.lte (lol.term.int 0) (lol.term.var x))
      | `(Prop) := pure $ lol.type.bool
+     | `(native.float) := pure $ lol.type.float
      | _ := if ty.is_arrow
             then compile_arrow_type ty compile_type
             else if ty.is_constant
@@ -134,7 +135,7 @@ meta def reflect_application (fn : expr) (args : list expr) (callback : expr →
 -- meta def is_supported_head_symbol (e : expr) : bool := true
 
 meta def is_supported_numeric_ty (ty : expr) : bool :=
-(ty = `(int) ∨ ty = `(nat))
+(ty = `(int) ∨ ty = `(nat) ∨ ty = `(native.float))
 
 -- /-- This function is the meat of the tactic, it takes a propositional formula in Lean, and transforms
 --    it into a corresponding term in SMT2. -/
@@ -174,7 +175,7 @@ meta def reflect_arith_formula (reflect_base : expr → smt2_m lol.term) : expr 
 -- /-- Check if the type is an `int` or logically a subtype of an `int` like nat. -/
 meta def is_int (e : expr) : tactic bool :=
 do ty ← infer_type e,
-   return $ (ty = `(int)) || (ty = `(nat))
+   return $ (ty = `(int)) || (ty = `(nat)) || (ty = `(native.float))
 
 meta def unsupported_ordering_on {α : Type} (elem : expr) : tactic α :=
 do ty ← infer_type elem,
@@ -245,6 +246,7 @@ meta def is_builtin_type : expr → bool
 | `(int) := tt
 | `(Prop) := tt
 | `(nat) := tt
+| `(native.float) := tt
 | _ := ff
 
 meta def unsupported_formula (e : expr) : smt2_m unit :=
@@ -309,10 +311,12 @@ begin
   intros, trivial
 end
 
+-- This replays the proof.
 axiom proof_by_z3 (A : Sort u) : A
 
 meta def z3 (log_file : option string := none) : tactic unit :=
 do (builder, _) ← smt2.reflect.run smt2_state.initial,
+   -- This also returns proof term.
    resp ← unsafe_run_io (smt2 builder log_file),
    match resp with
    | smt2.response.sat := fail "z3 was unable to prove the goal"

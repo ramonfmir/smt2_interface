@@ -6,10 +6,11 @@ namespace lol
 structure refinement (T : Type) :=
  (refinment : T → T)
 
-mutual inductive type, term
+meta mutual inductive type, term
 with type : Type
 | bool : type
 | int : type
+| float : type
 | var : string → type
 | fn : list type → type → type
 | refinement : type → (string → term) → type
@@ -37,6 +38,7 @@ with term : Type
 | gte : term → term → term
 | neg : term → term
 | int : int → term
+| float : float → term
 | forallq : string → type → term → term
 
 meta def term.subst (n : string) (subst : term) : term → term
@@ -79,6 +81,7 @@ meta def term.subst (n : string) (subst : term) : term → term
 | (term.neg t) :=
     term.neg (term.subst t)
 | (term.int i) := term.int i
+| (term.float f) := term.float f
 | (term.forallq n ty body) := term.forallq n ty body
     -- term.forallq (term.subst t) (term.subst u)
 
@@ -141,10 +144,11 @@ meta instance term.has_lt : has_lt term :=
 meta instance term.decidable_lt : decidable_rel ((<) : term → term → Prop) :=
 λ a b, is_true trivial
 
-mutual def type.to_string, list_map
+meta mutual def type.to_string, list_map
 with type.to_string : type → string
 | (type.int) := "int"
 | (type.bool) := "bool"
+| (type.float) := "float"
 | (type.var s) := s
 | (type.refinement t ref) := type.to_string t ++ " { x | }" -- thid doesn't work
 | (type.fn args rt) := string.join (list_map args) ++ (type.to_string rt)
@@ -154,12 +158,13 @@ with list_map : list type → list string
 -- with term.to_string : term → string
 -- | _ := "term"
 
-instance type.has_to_string : has_to_string type :=
+meta instance type.has_to_string : has_to_string type :=
 ⟨ type.to_string ⟩
-inductive decl
+
+meta inductive decl
 | fn : string → type → (option term) → decl
 
-def decl.name : decl → string
+meta def decl.name : decl → string
 | (decl.fn n _ _) := n
 
 meta structure context :=
@@ -224,6 +229,7 @@ fun msg, except_t.mk (state_t.mk (fun s, (except.error msg, s)))
 private meta def compile_type_simple : type → smt2_compiler smt2.sort
 | (type.bool) := return "Bool"
 | (type.int) := return "Int"
+| (type.float) := return "Real"
 | (type.var s) := return s
 | (type.fn [] rt) := compile_type_simple rt
 -- There is a bug here.
@@ -251,6 +257,7 @@ meta def compile_type'
 (compile_term : lol.term → smt2_compiler smt2.term) : type → smt2_compiler ((list smt2.sort) × smt2.sort × refinements)
 | (type.bool) := return ([], "Bool", refinements.empty)
 | (type.int) := return ([], "Int", refinements.empty)
+| (type.float) := return ([], "Real", refinements.empty)
 | (type.fn args ret) :=
     do args' ← monad.mapm compile_type_simple args,
        ret' ← compile_type_simple ret,
@@ -327,6 +334,7 @@ private meta def compile_term : lol.term → smt2_compiler smt2.term
 | (term.gte a b) := smt2.builder.gte <$> compile_term a <*> compile_term b
 | (term.mod a b) := smt2.builder.mod <$> compile_term a <*> compile_term b
 | (term.int i) := return $ smt2.builder.int_const i
+| (term.float f) := return $ smt2.builder.float_const f
 | (term.forallq n ty body) := smt2.builder.forallq n <$> (compile_type_simple ty) <*> compile_term body
 | (term.neg a) := smt2.builder.neg <$> compile_term a
 
@@ -341,6 +349,7 @@ do match ty with
       declare_sort n 0
    | type.int := return ()
    | type.bool := return ()
+   | type.float := return ()
    | type.var _ := return ()
    | type.refinement t ref := return ()
    end,
